@@ -7,6 +7,7 @@ const app = express();
 app.use(express.json());
 
 app.post("/users/register", (req, res, next) => {
+  console.log(req.body, "register body");
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
     next({ status: 403, msg: "Problem with Data" })
@@ -20,13 +21,14 @@ app.post("/users/register", (req, res, next) => {
       return;
     }
   }
-  INFORMATION.push({ email: email, info: `${name} info` })
+  INFORMATION.push([{ email: email, info: `${name} info` }])
   USERS.push({ email, name, password: encryptPassword })
-  console.log("in end of register")
+  console.log("in end of register");
   res.status(201).send("Register Success");
 });
 
 app.post("/users/login", (req, res, next) => {
+  console.log(req.body, "login body");
   const { email, password } = req.body;
   const userByEmail = USERS.find((user) => { return user.email === email });
   if (!userByEmail) {
@@ -39,8 +41,8 @@ app.post("/users/login", (req, res, next) => {
     const name = userByEmail.name;
     const accessToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10s" });
     const refreshToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10m" });
-    REFRESHTOKENS.push(refreshToken)
-    console.log("end of login");
+    REFRESHTOKENS.push(refreshToken);
+    console.log(accessToken, "end of login");
     res.send({ accessToken, refreshToken, email, name, isAdmin });
     return;
   } else {
@@ -72,13 +74,11 @@ app.get("/api/v1/information", (req, res, next) => {
     next({ status: 401, msg: "Access Token Required" })
     return;
   }
-  else if (AuthKey === true) {
-    res.send({ email, info });
-
-  }
-  else if (AuthKey === false) {
+  try {
+    const jwtOBJ = jwt.verify(AuthKey, jwtSalt)
+    res.send([jwtOBJ])
+  } catch (err) {
     next({ status: 403, msg: "Invalid Access Token" })
-    return;
   }
 })
 
