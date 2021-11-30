@@ -74,7 +74,6 @@ describe('Admin Tests', () => {
         const userMock = infoRes.body.filter(user => user.email === userRegisterMock.email)[0]
 
         expect(userMock.password === userRegisterMock.password).toBe(false)
-        expect(userMock.password.length).toBe(60)
         done()
     })
 })
