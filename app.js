@@ -13,14 +13,16 @@ app.post("/users/register", (req, res, next) => {
     return;
   }
   const encryptPassword = crypto.createHash("sha256", passSalt).update(password).digest("hex");
-  if (/*Sucssued*/encryptPassword) {
-    res.send("Register Success").status(201);
-    INFORMATION.push({ email: email, info: `${name} info` })
+
+  for (let user of USERS) {
+    if (user.email === email) {
+      next({ status: 409, msg: "user already exists" })
+      return;
+    }
   }
-  else {
-    next({ status: 409, msg: "user already exists" })
-    return;
-  }
+  res.status(201).send("Register Success");
+  INFORMATION.push({ email: email, info: `${name} info` })
+  USERS.push({ email, name, password: encryptPassword })
 });
 
 app.post("/users/login", (req, res, next) => {
@@ -159,6 +161,6 @@ const USERS = []
 const INFORMATION = []
 const REFRESHTOKENS = []
 
-const Admin = { email: "admin@email.com", name: "admin", password: "**hashed password**", isAdmin: true };
+const Admin = { email: "admin@email.com", name: "admin", password: crypto.createHash("sha256", passSalt).update("Rc123456!").digest("hex"), isAdmin: true };
 
 const Adminpass = "Rc123456!";
