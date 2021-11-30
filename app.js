@@ -2,7 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const jwtSalt = "Salt4JWT"
-const passSalt = "Salt4Pass"
+const passSalt = "Salt4PassS"
 const app = express();
 app.use(express.json());
 
@@ -42,8 +42,8 @@ app.post("/users/login", (req, res, next) => {
     const accessToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10s" });
     const refreshToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10m" });
     REFRESHTOKENS.push(refreshToken);
-    console.log(accessToken, "end of login");
     res.send({ accessToken, refreshToken, email, name, isAdmin });
+    console.log("end of login");
     return;
   } else {
     next({ status: 403, msg: "User or Password incorrect" })
@@ -69,14 +69,15 @@ app.post("/users/tokenValidate", (req, res, next) => {
 });
 
 app.get("/api/v1/information", (req, res, next) => {
-  const AuthKey = req.headers["authorization"].split(" ")[1];
-  if (!AuthKey) {
+  if (!req.headers["authorization"]) {
     next({ status: 401, msg: "Access Token Required" })
-    return;
+    return
   }
+  const AuthKey = req.headers["authorization"].split(" ")[1];
   try {
     const jwtOBJ = jwt.verify(AuthKey, jwtSalt)
     res.send([jwtOBJ])
+    console.log("end of info")
   } catch (err) {
     next({ status: 403, msg: "Invalid Access Token" })
   }
@@ -116,16 +117,16 @@ app.post("/users/logout", (req, res, next) => {
 });
 
 app.get("/api/v1/users", (req, res, next) => {
-  const AuthKey = req.headers["authorization"].split(" ")[1];
-  if (!AuthKey) {
+  if (!req.headers["authorization"]) {
     next({ status: 401, msg: "Access Token Required" })
     return;
   }
-  else if (AuthKey === true) {
-    res.send({ USERS: [...[{ email, name, password, isAdmin }]] }).statusCode(200);
-
-  }
-  else if (AuthKey === false) {
+  const AuthKey = req.headers["authorization"].split(" ")[1];
+  try {
+    const User = jwt.verify(AuthKey, jwtSalt)
+    console.log(AuthKey, "admin Authkey");
+    res.send([...USERS]).statusCode(200);
+  } catch (err) {
     next({ status: 403, msg: "Invalid Access Token" })
     return;
   }

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest ./tests/LogReg",
+    "test": "jest ./tests/Admin",
     "dev": "nodemon index.js",
     "start": ""
   },
