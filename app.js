@@ -1,68 +1,82 @@
 const express = require("express");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-
+const jwtSalt = "Salt4JWT"
+const passSalt = "Salt4Pass"
 const app = express();
 app.use(express.json());
 
 app.post("/users/register", (req, res, next) => {
   const { name, email, password } = req.body;
-  if (/*Sucssued*/true) {
-    res.send("Register Success").statusCode(201);
+  if (!name || !email || !password) {
+    next({ status: 403, msg: "Problem with Data" })
+    return;
+  }
+  const encryptPassword = crypto.createHash("sha256", passSalt).update(password).digest("hex");
+  if (/*Sucssued*/encryptPassword) {
+    res.send("Register Success").status(201);
     INFORMATION.push({ email: email, info: `${name} info` })
   }
   else {
-    res.send("user already exists").statusCode(409)
+    next({ status: 409, msg: "user already exists" })
+    return;
   }
 });
 
 app.post("/users/login", (req, res, next) => {
   const { email, password } = req.body;
   if (email === true) {
-    res.send({ accessToken, refreshToken, email, name, isAdmin }).statusCode(200);
+    res.send({ accessToken, refreshToken, email, name, isAdmin });
   } else {
-    res.send("User or Password incorrect").statusCode(403)
+    next({ status: 403, msg: "User or Password incorrect" })
+    return;
   }
 })
 
 app.post("/users/tokenValidate", (req, res, next) => {
   const AuthKey = req.headers["Authorization"].split(" ")[1];
   if (!AuthKey) {
-    res.send("Access Token Required").statusCode(401)
+    next({ status: 401, msg: "Access Token Required" })
+    return;
   }
   else if (AuthKey === true) {
-    res.send({ valid: true }).statusCode(200);
+    res.send({ valid: true });
   }
   else if (AuthKey === false) {
-    res.send("Invalid Access Token").statusCode(403);
+    next({ status: 403, msg: "Invalid Access Token" })
+    return;
   }
 });
 
 app.get("/api/v1/information", (req, res, next) => {
   const AuthKey = req.headers["Authorization"].split(" ")[1];
   if (!AuthKey) {
-    res.send("Access Token Required").statusCode(401)
+    next({ status: 401, msg: "Access Token Required" })
+    return;
   }
   else if (AuthKey === true) {
-    res.send({ email, info }).statusCode(200);
+    res.send({ email, info });
 
   }
   else if (AuthKey === false) {
-    res.send("Invalid Access Token").statusCode(403);
+    next({ status: 403, msg: "Invalid Access Token" })
+    return;
   }
 })
 
 app.post("/users/token", (req, res, next) => {
   const refreshToken = req.body.token;
   if (!refreshToken) {
-    res.send("Refresh Token Required").statusCode(401)
+    next({ status: 401, msg: "Refresh Token Required" })
+    return;
   }
   else if (AuthKey === true) {
-    res.send({ email, info }).statusCode(200);
+    res.send({ email, info });
 
   }
   else if (AuthKey === false) {
-    res.send("Invalid Refresh Token").statusCode(403);
+    next({ status: 403, msg: "Invalid Refresh Token" })
+    return;
   }
 })
 
@@ -70,27 +84,31 @@ app.post("/users/logout", (req, res, next) => {
   const refreshToken = req.body.token;
   const someAction = req.body.what; // change this
   if (!refreshToken) {
-    res.send("Refresh Token Required").statusCode(400)
+    next({ status: 401, msg: "Refresh Token Required" })
+    return;
   }
   else if (someAction === true) {
     res.send("User Logged Out Successfully").statusCode(200)
   }
   else if (someAction === false) {
-    res.send("Invalid Refresh Token").statusCode(400);
+    next({ status: 403, msg: "Invalid Refresh Token" })
+    return;
   }
 });
 
 app.get("/api/v1/users", (req, res, next) => {
   const AuthKey = req.headers["Authorization"].split(" ")[1];
   if (!AuthKey) {
-    res.send("Access Token Required").statusCode(401)
+    next({ status: 401, msg: "Access Token Required" })
+    return;
   }
   else if (AuthKey === true) {
     res.send({ USERS: [...[{ email, name, password, isAdmin }]] }).statusCode(200);
 
   }
   else if (AuthKey === false) {
-    res.send("Invalid Access Token").statusCode(403);
+    next({ status: 403, msg: "Invalid Access Token" })
+    return;
   }
 });
 
@@ -128,8 +146,17 @@ app.options("/", (req, res, next) => {
 })
 
 
-const USERS = [...{ email, name, password, isAdmin }],
-const INFORMATION = [...{ email, info }]
+app.use((err, req, res, next) => {
+  if (err.status) {
+
+  }
+  res.status(404).send("unknown endpoint")
+})
+
+module.exports = app;
+
+const USERS = []
+const INFORMATION = []
 const REFRESHTOKENS = []
 
 const Admin = { email: "admin@email.com", name: "admin", password: "**hashed password**", isAdmin: true };
