@@ -137,20 +137,24 @@ app.options("/", (req, res, next) => {
     { method: "post", path: "/users/register", description: "Register, Required: email, name, password", example: { body: { email: "user@email.com", name: "user", password: "password" } } },
     { method: "post", path: "/users/login", description: "Login, Required: valid email and password", example: { body: { email: "user@email.com", password: "password" } } }
   )
-  console.log(req.headers, "headers")
+
   if (!req.headers["authorization"]) {
-    console.log("!!!!!!!!!")
     res.send(endPointsArray);
     return;
   }
-  console.log(req.headers["authorization"])
-  const AuthKey = req.headers["authorization"].split(" ")[1];
-  console.log(AuthKey, "Auth");
   endPointsArray.push(
     { method: "post", path: "/users/token", description: "Renew access token, Required: valid refresh token", example: { headers: { token: "\*Refresh Token\*" } } }
   )
+  const AuthKey = req.headers["authorization"].split(" ")[1];
+  try {
+    jwt.verify(AuthKey, jwtSalt)
+  } catch (err) {
+    console.log("in catchhhh! @#@#")
+    res.send(endPointsArray);
+    return;
+  }
+
   const JWTobj = jwt.verify(AuthKey, jwtSalt);
-  console.log(JWTobj, "jwt OBJ")
   if (!JWTobj) {
     res.send(endPointsArray);
     return;
