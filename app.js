@@ -20,15 +20,29 @@ app.post("/users/register", (req, res, next) => {
       return;
     }
   }
-  res.status(201).send("Register Success");
   INFORMATION.push({ email: email, info: `${name} info` })
   USERS.push({ email, name, password: encryptPassword })
+  console.log("in end of register")
+  res.status(201).send("Register Success");
 });
 
 app.post("/users/login", (req, res, next) => {
   const { email, password } = req.body;
-  if (email === true) {
+  const userByEmail = USERS.find((user) => { return user.email === email });
+  if (!userByEmail) {
+    next({ status: 404, msg: "cannot find user" })
+    return;
+  }
+  const encryptGivenPassword = crypto.createHash("sha256", passSalt).update(password).digest("hex")
+  if (encryptGivenPassword === userByEmail.password) {
+    const isAdmin = userByEmail.isAdmin || false;
+    const name = userByEmail.name;
+    const accessToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10s" });
+    const refreshToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10m" });
+    REFRESHTOKENS.push(refreshToken)
+    console.log("end of login");
     res.send({ accessToken, refreshToken, email, name, isAdmin });
+    return;
   } else {
     next({ status: 403, msg: "User or Password incorrect" })
     return;
@@ -36,22 +50,24 @@ app.post("/users/login", (req, res, next) => {
 })
 
 app.post("/users/tokenValidate", (req, res, next) => {
-  const AuthKey = req.headers["Authorization"].split(" ")[1];
+  const AuthKey = req.headers["authorization"].split(" ")[1];
   if (!AuthKey) {
     next({ status: 401, msg: "Access Token Required" })
     return;
   }
-  else if (AuthKey === true) {
+  const jwtObj = jwt.verify(AuthKey, jwtSalt)
+  console.log("jwt Token", jwtObj);
+  if (jwtObj) {
     res.send({ valid: true });
   }
-  else if (AuthKey === false) {
+  else {
     next({ status: 403, msg: "Invalid Access Token" })
     return;
   }
 });
 
 app.get("/api/v1/information", (req, res, next) => {
-  const AuthKey = req.headers["Authorization"].split(" ")[1];
+  const AuthKey = req.headers["authorization"].split(" ")[1];
   if (!AuthKey) {
     next({ status: 401, msg: "Access Token Required" })
     return;
@@ -99,7 +115,7 @@ app.post("/users/logout", (req, res, next) => {
 });
 
 app.get("/api/v1/users", (req, res, next) => {
-  const AuthKey = req.headers["Authorization"].split(" ")[1];
+  const AuthKey = req.headers["authorization"].split(" ")[1];
   if (!AuthKey) {
     next({ status: 401, msg: "Access Token Required" })
     return;
@@ -115,22 +131,27 @@ app.get("/api/v1/users", (req, res, next) => {
 });
 
 app.options("/", (req, res, next) => {
-  const AuthKey = req.headers["Authorization"].split(" ")[1];
-  const endPointsArray = []
   res.setHeader("Allow", "OPTIONS, GET, POST");
+  const endPointsArray = []
   endPointsArray.push(
     { method: "post", path: "/users/register", description: "Register, Required: email, name, password", example: { body: { email: "user@email.com", name: "user", password: "password" } } },
     { method: "post", path: "/users/login", description: "Login, Required: valid email and password", example: { body: { email: "user@email.com", password: "password" } } }
   )
-  if (!AuthKey) {
+  console.log(req.headers, "headers")
+  if (!req.headers["authorization"]) {
+    console.log("!!!!!!!!!")
     res.send(endPointsArray);
     return;
   }
+  console.log(req.headers["authorization"])
+  const AuthKey = req.headers["authorization"].split(" ")[1];
+  console.log(AuthKey, "Auth");
   endPointsArray.push(
     { method: "post", path: "/users/token", description: "Renew access token, Required: valid refresh token", example: { headers: { token: "\*Refresh Token\*" } } }
   )
-  const JWTobj = AuthKey.jwt();
-  if (AuthKey == false) {
+  const JWTobj = jwt.verify(AuthKey, jwtSalt);
+  console.log(JWTobj, "jwt OBJ")
+  if (!JWTobj) {
     res.send(endPointsArray);
     return;
   }
@@ -141,24 +162,28 @@ app.options("/", (req, res, next) => {
   )
   if (JWTobj.isAdmin === true) {
     endPointsArray.push(
-      { method: "get", path: "api/v1/users", description: "Get users DB, Required: Valid access token of admin user", example: { headers: { authorization: "Bearer \*Access Token\*" } } }
+      { method: "get", path: "api/v1/users", description: "Get users DB, Required: Valid access token of admin user", example: { headers: { Authorization: "Bearer \*Access Token\*" } } }
     )
   }
   res.send(endPointsArray)
+  return;
 })
 
 
 app.use((err, req, res, next) => {
   if (err.status) {
-
+    console.log("spec error");
+    res.status(err.status).send(err.msg)
+    return;
   }
-  res.status(404).send("unknown endpoint")
+  console.log("general error");
+  res.status(444).send("unknown endpoint")
 })
 
 module.exports = app;
 
-const USERS = []
-const INFORMATION = []
+const USERS = [{ email: "admin@email.com", name: "admin", password: crypto.createHash("sha256", passSalt).update("Rc123456!").digest("hex"), isAdmin: true }]
+const INFORMATION = [{ email: "admin@email.com", info: `admin info` }]
 const REFRESHTOKENS = []
 
 const Admin = { email: "admin@email.com", name: "admin", password: crypto.createHash("sha256", passSalt).update("Rc123456!").digest("hex"), isAdmin: true };
