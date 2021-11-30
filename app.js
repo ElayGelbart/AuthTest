@@ -7,7 +7,6 @@ const app = express();
 app.use(express.json());
 
 app.post("/users/register", (req, res, next) => {
-  console.log(req.body, "register body");
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
     next({ status: 403, msg: "Problem with Data" })
@@ -23,12 +22,10 @@ app.post("/users/register", (req, res, next) => {
   }
   INFORMATION.push([{ email: email, info: `${name} info` }])
   USERS.push({ email, name, password: encryptPassword })
-  console.log("in end of register");
   res.status(201).send("Register Success");
 });
 
 app.post("/users/login", (req, res, next) => {
-  console.log(req.body, "login body");
   const { email, password } = req.body;
   const userByEmail = USERS.find((user) => { return user.email === email });
   if (!userByEmail) {
@@ -40,10 +37,10 @@ app.post("/users/login", (req, res, next) => {
     const isAdmin = userByEmail.isAdmin || false;
     const name = userByEmail.name;
     const accessToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10s" });
-    const refreshToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "10m" });
+    const refreshToken = jwt.sign(userByEmail, jwtSalt, { expiresIn: "1h" });
     REFRESHTOKENS.push(refreshToken);
     res.send({ accessToken, refreshToken, email, name, isAdmin });
-    console.log("end of login");
+
     return;
   } else {
     next({ status: 403, msg: "User or Password incorrect" })
@@ -58,7 +55,6 @@ app.post("/users/tokenValidate", (req, res, next) => {
     return;
   }
   const jwtObj = jwt.verify(AuthKey, jwtSalt)
-  console.log("jwt Token", jwtObj);
   if (jwtObj) {
     res.send({ valid: true });
   }
@@ -77,7 +73,6 @@ app.get("/api/v1/information", (req, res, next) => {
   try {
     const jwtOBJ = jwt.verify(AuthKey, jwtSalt)
     res.send([jwtOBJ])
-    console.log("end of info")
   } catch (err) {
     next({ status: 403, msg: "Invalid Access Token" })
   }
@@ -89,11 +84,14 @@ app.post("/users/token", (req, res, next) => {
     next({ status: 401, msg: "Refresh Token Required" })
     return;
   }
-  else if (AuthKey === true) {
-    res.send({ email, info });
-
-  }
-  else if (AuthKey === false) {
+  try {
+    if (REFRESHTOKENS.indexOf(refreshToken) < 0) {
+      throw new Error;
+    }
+    const jwtOBJ = jwt.verify(refreshToken, jwtSalt);
+    const newToken = jwt.sign({ email: jwtOBJ.email, name: jwtOBJ.name }, jwtSalt, { expiresIn: "10s" })
+    res.send({ accessToken: newToken });
+  } catch (err) {
     next({ status: 403, msg: "Invalid Refresh Token" })
     return;
   }
@@ -124,7 +122,6 @@ app.get("/api/v1/users", (req, res, next) => {
   const AuthKey = req.headers["authorization"].split(" ")[1];
   try {
     const User = jwt.verify(AuthKey, jwtSalt)
-    console.log(AuthKey, "admin Authkey");
     res.send([...USERS]).statusCode(200);
   } catch (err) {
     next({ status: 403, msg: "Invalid Access Token" })
@@ -151,7 +148,6 @@ app.options("/", (req, res, next) => {
   try {
     jwt.verify(AuthKey, jwtSalt)
   } catch (err) {
-    console.log("in catchhhh! @#@#")
     res.send(endPointsArray);
     return;
   }
@@ -178,11 +174,9 @@ app.options("/", (req, res, next) => {
 
 app.use((err, req, res, next) => {
   if (err.status) {
-    console.log("spec error");
     res.status(err.status).send(err.msg)
     return;
   }
-  console.log("general error");
   res.status(444).send("unknown endpoint")
 })
 
