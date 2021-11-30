@@ -100,18 +100,19 @@ app.post("/users/token", (req, res, next) => {
 
 app.post("/users/logout", (req, res, next) => {
   const refreshToken = req.body.token;
-  const someAction = req.body.what; // change this
   if (!refreshToken) {
     next({ status: 401, msg: "Refresh Token Required" })
     return;
   }
-  else if (someAction === true) {
-    res.send("User Logged Out Successfully").statusCode(200)
-  }
-  else if (someAction === false) {
+  try {
+    jwt.verify(refreshToken, jwtSalt);
+    const filterd = REFRESHTOKENS.filter(token => token != refreshToken)
+    res.send("User Logged Out Successfully")
+  } catch (err) {
     next({ status: 403, msg: "Invalid Refresh Token" })
     return;
   }
+
 });
 
 app.get("/api/v1/users", (req, res, next) => {
